@@ -1,0 +1,22 @@
+import Foundation
+
+/// Configuration for the app.
+///
+/// 1. Copy this file to `Config.swift` (same folder).
+/// 2. Paste your Anthropic API key into `anthropicAPIKey`.
+///
+/// `Config.swift` is listed in `.gitignore`, so your key never lands in the repo.
+enum Config {
+
+    /// The Claude model used for recognition. Change here and only here.
+    static let model = "claude-sonnet-5"
+
+    /// Your Anthropic API key (starts with `sk-ant-...`).
+    static let anthropicAPIKey = "PASTE_YOUR_ANTHROPIC_API_KEY_HERE"
+
+    /// Upper bound on tokens in the model reply.
+    static let maxTokens = 1024
+
+    /// Network timeout for a single request, in seconds.
+    static let requestTimeout: TimeInterval = 60
+}

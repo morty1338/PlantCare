@@ -128,7 +128,7 @@ struct ContentView: View {
     private var missingKeyBanner: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "key.fill").foregroundStyle(.orange)
-            Text("No API key set. Open PlantCare/Config.swift and paste your Anthropic key.")
+            Text("No API key set. Add your Anthropic key to Config/Secrets.xcconfig and rebuild.")
                 .font(.footnote)
                 .foregroundStyle(Theme.ink)
         }

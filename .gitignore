@@ -1,0 +1,16 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store
+
+# Private build values: Anthropic key, Team ID. Template: Config/Secrets.example.xcconfig
+Config/Secrets.xcconfig
+
+# Local files that don't belong in the repository
+.claude/
+*.pdf

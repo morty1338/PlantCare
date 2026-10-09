@@ -14,7 +14,7 @@ enum AnalysisError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingAPIKey:
-            return "No API key set. Open PlantCare/Config.swift and paste your Anthropic key."
+            return "No API key set. Add your Anthropic key to Config/Secrets.xcconfig and rebuild."
         case .imageEncodingFailed:
             return "Couldn't prepare the photo. Try a different one."
         case .network(let detail):

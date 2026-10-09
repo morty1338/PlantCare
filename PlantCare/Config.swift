@@ -2,15 +2,19 @@ import Foundation
 
 /// Configuration for the app.
 ///
-/// This file is listed in `.gitignore` and is NOT committed to the repository.
-/// Paste your Anthropic API key into `anthropicAPIKey` below.
+/// The API key is not stored in code: it lives in `Config/Secrets.xcconfig` (listed in
+/// `.gitignore`), goes into Info.plist at build time and is read from the bundle here.
+/// Template: `Config/Secrets.example.xcconfig`.
 enum Config {
 
     /// The Claude model used for recognition. Change here and only here.
     static let model = "claude-sonnet-5"
 
-    /// Your Anthropic API key (starts with `sk-ant-...`).
-    static let anthropicAPIKey = "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"
+    /// Your Anthropic API key (starts with `sk-ant-...`), injected from `Secrets.xcconfig`.
+    static let anthropicAPIKey: String = {
+        let value = Bundle.main.object(forInfoDictionaryKey: "AnthropicAPIKey") as? String ?? ""
+        return value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }()
 
     /// Upper bound on tokens in the model reply. Roomy enough that the JSON (with
     /// habitat, soil, placement, all possibly in Ukrainian) is never truncated.
@@ -22,6 +26,6 @@ enum Config {
 
     /// Whether a usable key has been provided.
     static var hasAPIKey: Bool {
-        !anthropicAPIKey.isEmpty && anthropicAPIKey != "PASTE_YOUR_ANTHROPIC_API_KEY_HERE"
+        anthropicAPIKey.hasPrefix("sk-ant-")
     }
 }

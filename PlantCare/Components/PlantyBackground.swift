@@ -45,6 +45,10 @@ struct PlantyBackground: View {
                 .transition(.opacity)
             }
         }
+        // Rasterise once into a single layer: the multiply blends aren't recomposited on
+        // every frame of every animation that happens on top of the background.
+        .drawingGroup()
+        .allowsHitTesting(false)
         .ignoresSafeArea()
         .task {
             if leaf == nil {

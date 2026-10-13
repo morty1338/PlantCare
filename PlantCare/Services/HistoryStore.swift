@@ -1,18 +1,37 @@
 import Foundation
 import Combine
+import UIKit
 
 /// Persists home-plant history as Codable JSON in the app's Documents directory.
+///
+/// Reading, encoding (photos live inside the JSON) and writing all happen off the main
+/// thread, so neither launch nor any edit ever blocks the UI.
 @MainActor
 final class HistoryStore: ObservableObject {
 
     @Published private(set) var plants: [PlantRecord] = []
 
     private let fileURL: URL
+    /// Serial, so writes land in order and the file always ends up with the latest state.
+    private let ioQueue = DispatchQueue(label: "PlantCare.HistoryStore.io", qos: .utility)
+
+    /// Stored photos are kept at most this size; larger legacy ones are shrunk once.
+    nonisolated static let photoMaxPixel: CGFloat = 900
 
     init() {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         fileURL = documents.appendingPathComponent("history.json")
-        load()
+        let url = fileURL
+        Task { [weak self] in
+            let (loaded, shrunk) = await Task.detached(priority: .userInitiated) {
+                HistoryStore.read(url)
+            }.value
+            guard let self else { return }
+            // Anything added in the first instant (before loading finished) is kept.
+            let fresh = self.plants.filter { new in !loaded.contains { $0.id == new.id } }
+            self.plants = loaded + fresh
+            if shrunk || !fresh.isEmpty { self.save() }
+        }
     }
 
     // MARK: - Mutations
@@ -89,17 +108,38 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Persistence
 
-    private func load() {
-        guard let data = try? Data(contentsOf: fileURL) else { return }
-        if let decoded = try? JSONDecoder.plantCare.decode([PlantRecord].self, from: data) {
-            plants = decoded
-        }
+    /// Snapshot on the main thread (copy-on-write, free), encode and write in the background.
+    private func save() {
+        let snapshot = plants
+        let url = fileURL
+        ioQueue.async { HistoryStore.write(snapshot, to: url) }
     }
 
-    private func save() {
+    /// Reads the saved garden. Photos stored before downscaling existed are shrunk once,
+    /// which keeps the JSON — and therefore every launch and save — small.
+    nonisolated private static func read(_ url: URL) -> (plants: [PlantRecord], shrunk: Bool) {
+        guard let data = try? Data(contentsOf: url),
+              var plants = try? JSONDecoder.plantCare.decode([PlantRecord].self, from: data) else {
+            return ([], false)
+        }
+        var shrunk = false
+        for index in plants.indices {
+            guard let photo = plants[index].thumbnailData, photo.count > 350_000,
+                  let image = UIImage(data: photo) else { continue }
+            let small = ImagePrep.downscale(image, maxPixel: photoMaxPixel)
+            let isCutout = plants[index].thumbnailIsCutout == true
+            if let encoded = isCutout ? small.pngData() : small.jpegData(compressionQuality: 0.78) {
+                plants[index].thumbnailData = encoded
+                shrunk = true
+            }
+        }
+        return (plants, shrunk)
+    }
+
+    nonisolated private static func write(_ plants: [PlantRecord], to url: URL) {
         do {
             let data = try JSONEncoder.plantCare.encode(plants)
-            try data.write(to: fileURL, options: [.atomic])
+            try data.write(to: url, options: [.atomic])
         } catch {
             // Non-fatal: history simply won't persist this change.
             print("HistoryStore save failed: \(error)")

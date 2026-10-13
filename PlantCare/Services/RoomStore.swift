@@ -23,25 +23,40 @@ struct Room: Codable, Identifiable, Equatable {
 }
 
 /// Persists the user's room photos (for "home planning" placement advice).
+/// Photos are downscaled before storing; reading and writing happen off the main thread.
 @MainActor
 final class RoomStore: ObservableObject {
     @Published private(set) var rooms: [Room] = []
 
     private let fileURL: URL
+    private let ioQueue = DispatchQueue(label: "PlantCare.RoomStore.io", qos: .utility)
+
+    /// Rooms are sent to the API at ~680 px, so storing more is wasted space and time.
+    nonisolated static let photoMaxPixel: CGFloat = 1100
 
     init() {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         fileURL = docs.appendingPathComponent("rooms.json")
-        load()
+        let url = fileURL
+        Task { [weak self] in
+            let (loaded, shrunk) = await Task.detached(priority: .utility) { RoomStore.read(url) }.value
+            guard let self else { return }
+            let fresh = self.rooms.filter { new in !loaded.contains { $0.id == new.id } }
+            self.rooms = loaded + fresh
+            if shrunk || !fresh.isEmpty { self.save() }
+        }
     }
 
-    /// Decoded room images, ready to send to the API.
+    /// Room images, ready to send to the API (decoded lazily, off the main thread, by the service).
     var images: [UIImage] { rooms.compactMap { UIImage(data: $0.imageData) } }
 
     func add(_ image: UIImage, name: String) {
-        guard let data = image.jpegData(compressionQuality: 0.7) else { return }
-        rooms.append(Room(name: name.trimmingCharacters(in: .whitespacesAndNewlines), imageData: data))
-        save()
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        Task {
+            guard let data = await ImagePrep.storageData(for: image, maxPixel: Self.photoMaxPixel) else { return }
+            rooms.append(Room(name: trimmed, imageData: data))
+            save()
+        }
     }
 
     func rename(_ id: UUID, to name: String) {
@@ -55,15 +70,28 @@ final class RoomStore: ObservableObject {
         save()
     }
 
-    private func load() {
-        guard let data = try? Data(contentsOf: fileURL),
-              let decoded = try? JSONDecoder().decode([Room].self, from: data) else { return }
-        rooms = decoded
+    private func save() {
+        let snapshot = rooms
+        let url = fileURL
+        ioQueue.async {
+            if let data = try? JSONEncoder().encode(snapshot) {
+                try? data.write(to: url, options: [.atomic])
+            }
+        }
     }
 
-    private func save() {
-        if let data = try? JSONEncoder().encode(rooms) {
-            try? data.write(to: fileURL, options: [.atomic])
+    /// Reads saved rooms; full-size photos from older versions are shrunk once.
+    nonisolated private static func read(_ url: URL) -> (rooms: [Room], shrunk: Bool) {
+        guard let data = try? Data(contentsOf: url),
+              var rooms = try? JSONDecoder().decode([Room].self, from: data) else { return ([], false) }
+        var shrunk = false
+        for index in rooms.indices where rooms[index].imageData.count > 450_000 {
+            guard let image = UIImage(data: rooms[index].imageData),
+                  let small = ImagePrep.downscale(image, maxPixel: photoMaxPixel)
+                    .jpegData(compressionQuality: 0.78) else { continue }
+            rooms[index].imageData = small
+            shrunk = true
         }
+        return (rooms, shrunk)
     }
 }

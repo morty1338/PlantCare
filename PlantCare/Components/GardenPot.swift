@@ -8,7 +8,8 @@ let maxPotNameLength = 14
 /// photo, the whole photo sits neatly in a rounded frame at the top of the stem.
 struct GardenPotView: View {
     let plant: PlantRecord
-    private let cardHeight: CGFloat = 200
+    /// Card height; the garden lays pots out on a grid of this size.
+    static let cardHeight: CGFloat = 200
 
     var body: some View {
         GeometryReader { geo in
@@ -22,10 +23,9 @@ struct GardenPotView: View {
                 PlantArtwork(seed: seed, hasPhoto: plant.thumbnailData != nil)
 
                 // The user's photo, kept whole in a rounded frame at the stem top.
-                if let data = plant.thumbnailData, let image = UIImage(data: data) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
+                // Decoded off the main thread through the shared cache.
+                if let data = plant.thumbnailData, let key = plant.photoKey {
+                    CachedImage(data: data, key: key, maxPixel: 320)
                         .frame(width: w * 0.44, height: w * 0.44)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -50,7 +50,7 @@ struct GardenPotView: View {
                     .position(x: w * 0.5, y: h * 0.74)
             }
         }
-        .frame(height: cardHeight)
+        .frame(height: Self.cardHeight)
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
     }
@@ -68,6 +68,15 @@ struct GardenPotView: View {
         let bytes = [b.0, b.1, b.2, b.3, b.4, b.5, b.6, b.7,
                      b.8, b.9, b.10, b.11, b.12, b.13, b.14, b.15]
         return bytes.reduce(0) { ($0 &* 31 &+ Int($1)) & 0x7fffffff }
+    }
+}
+
+/// Pots only redraw when what they show changes — not on every frame of a drag elsewhere.
+extension GardenPotView: Equatable {
+    static func == (lhs: GardenPotView, rhs: GardenPotView) -> Bool {
+        lhs.plant.id == rhs.plant.id
+            && lhs.plant.displayName == rhs.plant.displayName
+            && lhs.plant.photoKey == rhs.plant.photoKey
     }
 }
 

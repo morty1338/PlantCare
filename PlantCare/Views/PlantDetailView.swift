@@ -94,7 +94,7 @@ struct PlantDetailView: View {
                     NavigationLink {
                         FullInfoScreen(plantName: plant.displayName,
                                        entry: latest,
-                                       plantImage: plant.thumbnailData.flatMap(UIImage.init))
+                                       plantImageData: plant.thumbnailData)
                     } label: {
                         Label(lang.t("Show full details", "Показати повну інформацію"), systemImage: "doc.text.magnifyingglass")
                     }
@@ -113,14 +113,12 @@ struct PlantDetailView: View {
         VStack(spacing: 12) {
             ZStack {
                 Circle().fill(Theme.mint).frame(width: 110, height: 110)
-                if let data = plant.thumbnailData, let uiImage = UIImage(data: data) {
+                if let data = plant.thumbnailData, let key = plant.photoKey {
                     if plant.thumbnailIsCutout == true {
-                        Image(uiImage: uiImage)
-                            .resizable().scaledToFit()
+                        CachedImage(data: data, key: key + "-fit", maxPixel: 360, contentMode: .fit)
                             .frame(width: 92, height: 92)
                     } else {
-                        Image(uiImage: uiImage)
-                            .resizable().scaledToFill()
+                        CachedImage(data: data, key: key + "-header", maxPixel: 360)
                             .frame(width: 110, height: 110)
                             .clipShape(Circle())
                     }

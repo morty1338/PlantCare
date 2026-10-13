@@ -6,7 +6,7 @@ import UIKit
 struct FullInfoScreen: View {
     let plantName: String
     let entry: PlantEntry
-    let plantImage: UIImage?
+    let plantImageData: Data?
 
     @EnvironmentObject private var lang: LanguageManager
     @State private var showChat = false
@@ -40,7 +40,7 @@ struct FullInfoScreen: View {
     private func openChat() {
         chatVM.start(plantName: plantName,
                      summary: Self.summary(of: analysis),
-                     originalImage: plantImage,
+                     originalImage: plantImageData.flatMap { UIImage(data: $0) },
                      firstQuestion: nil,
                      opener: lang.t("Ask anything about your plant, or add a photo.",
                                     "Запитайте будь-що про вашу рослину або додайте фото."),

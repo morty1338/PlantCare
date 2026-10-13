@@ -78,9 +78,10 @@ struct RoomsView: View {
         LazyVGrid(columns: columns, spacing: 16) {
             ForEach(rooms.rooms) { room in
                 VStack(spacing: 8) {
-                    if let image = UIImage(data: room.imageData) {
-                        Image(uiImage: image)
-                            .resizable().scaledToFill()
+                    Group {
+                        CachedImage(data: room.imageData,
+                                    key: ImageCache.key("room-\(room.id.uuidString)", data: room.imageData),
+                                    maxPixel: 600)
                             .frame(height: 120)
                             .frame(maxWidth: .infinity)
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))

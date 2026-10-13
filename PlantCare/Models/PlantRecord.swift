@@ -31,6 +31,11 @@ struct PlantRecord: Codable, Identifiable, Equatable {
         self.entries = entries
     }
 
+    /// Cache key of the current photo (changes when the photo is replaced).
+    var photoKey: String? {
+        thumbnailData.map { ImageCache.key("plant-\(id.uuidString)", data: $0) }
+    }
+
     /// The longest single word in the display name — used to decide if it fits a pot.
     var longestWordLength: Int {
         displayName.split(separator: " ").map(\.count).max() ?? displayName.count

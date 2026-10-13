@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Fresh, salad-green palette and shared visual tokens.
 enum Theme {
@@ -121,4 +122,32 @@ struct SecondaryButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.85 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
+}
+
+// MARK: - Motion
+
+/// Animation curves in one place so motion feels the same everywhere
+/// (the same values as SoundMarks' `DS.Motion`).
+enum Motion {
+    /// Taps, lifting a pot, entering edit mode.
+    static let quick = Animation.spring(response: 0.28, dampingFraction: 0.86)
+    /// Settling back into place, leaving edit mode.
+    static let standard = Animation.spring(response: 0.38, dampingFraction: 0.82)
+    /// Neighbours gliding out of the way while a pot is dragged.
+    static let reorder = Animation.spring(response: 0.3, dampingFraction: 0.9)
+}
+
+// MARK: - Haptics
+
+/// Haptic feedback in one place so feedback strength stays consistent.
+@MainActor
+enum Haptics {
+    /// Regular button press.
+    static func tap() { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+    /// A pot is picked up / edit mode starts.
+    static func lift() { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
+    /// A pot changes place.
+    static func select() { UISelectionFeedbackGenerator().selectionChanged() }
+    static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+    static func warning() { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
 }

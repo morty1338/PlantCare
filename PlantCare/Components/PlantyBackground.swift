@@ -4,19 +4,22 @@ import SwiftUI
 /// watermark (multiply blend of a lightened copy). Leaves sit in the corners so
 /// they never sit behind the central text column.
 struct PlantyBackground: View {
-    private struct Placement: Identifiable {
-        let id = UUID()
+    private struct Placement {
         let x: CGFloat, y: CGFloat, width: CGFloat, angle: Double
     }
 
-    private let placements: [Placement] = [
+    /// Static and index-identified: the background has no stored values that change between
+    /// redraws, so a parent re-rendering (every frame of a drag) never rebuilds the leaves.
+    /// (They used to get a fresh `UUID()` per redraw, which made them blink.)
+    private static let placements: [Placement] = [
         .init(x: -0.04, y: 0.05, width: 0.40, angle: -22),
         .init(x: 1.04, y: 0.30, width: 0.40, angle: 150),
         .init(x: -0.06, y: 0.92, width: 0.42, angle: 30),
         .init(x: 1.02, y: 0.97, width: 0.5, angle: -150)
     ]
 
-    @State private var leaf: Image?
+    /// Starts from the cached drawing, so a newly opened screen never shows a bare background.
+    @State private var leaf: Image? = LeafArt.ready
 
     var body: some View {
         ZStack {
@@ -32,7 +35,8 @@ struct PlantyBackground: View {
                 GeometryReader { geo in
                     let w = geo.size.width
                     let h = geo.size.height
-                    ForEach(placements) { p in
+                    ForEach(Self.placements.indices, id: \.self) { index in
+                        let p = Self.placements[index]
                         leaf
                             .resizable()
                             .scaledToFit()
@@ -42,9 +46,11 @@ struct PlantyBackground: View {
                             .blendMode(.multiply)
                     }
                 }
-                .transition(.opacity)
             }
         }
+        // Never take part in animations running on top (a reorder, a sheet): the
+        // background just stays put.
+        .transaction { $0.animation = nil }
         // Rasterise once into a single layer: the multiply blends aren't recomposited on
         // every frame of every animation that happens on top of the background.
         .drawingGroup()
@@ -52,8 +58,7 @@ struct PlantyBackground: View {
         .ignoresSafeArea()
         .task {
             if leaf == nil {
-                let loaded = await LeafArt.load()
-                withAnimation(.easeIn(duration: 0.3)) { leaf = loaded }
+                leaf = await LeafArt.load()
             }
         }
     }

@@ -10,6 +10,9 @@ import UIKit
 enum LeafArt {
     private static var cached: Image?
 
+    /// The watermark if it has already been prepared (no waiting).
+    static var ready: Image? { cached }
+
     /// Load (and cache) the watermark asynchronously.
     static func load() async -> Image? {
         if let cached { return cached }

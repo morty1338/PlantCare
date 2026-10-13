@@ -32,10 +32,19 @@ final class AppViewModel: ObservableObject {
     // MARK: - Entry points
 
     func analyze(image: UIImage, history: HistoryStore, rooms: [UIImage] = [], language: String = "English") {
-        capturedImage = image
         self.language = language
-        lastRequest = .image(image, rooms: rooms)
-        run(history: history)
+        // Show the loading screen at once; the 12-MP camera photo is downscaled off the
+        // main thread so the result screen, the upload and the chat all use a light copy.
+        flow = .loading
+        savedPlantID = nil
+        Task {
+            let prepared = await Task.detached(priority: .userInitiated) {
+                ImagePrep.downscale(image, maxPixel: 1600)
+            }.value
+            capturedImage = prepared
+            lastRequest = .image(prepared, rooms: rooms)
+            run(history: history)
+        }
     }
 
     func analyze(name: String, history: HistoryStore, language: String = "English") {

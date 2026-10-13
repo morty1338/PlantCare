@@ -74,8 +74,12 @@ struct PlantDetailView: View {
     @ViewBuilder
     private func photoPicker(for source: PhotoSource) -> some View {
         let onImage: (UIImage) -> Void = { image in
-            history.setPhoto(plantID, data: image.jpegData(compressionQuality: 0.7))
             activePicker = nil
+            // Store a small copy (encoded off the main thread), not the full camera photo.
+            Task {
+                let data = await ImagePrep.storageData(for: image, maxPixel: HistoryStore.photoMaxPixel)
+                history.setPhoto(plantID, data: data)
+            }
         }
         switch source {
         case .camera:

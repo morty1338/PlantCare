@@ -166,7 +166,14 @@ struct ChatView: View {
 
     @ViewBuilder
     private func picker(for source: PhotoSource) -> some View {
-        let onImage: (UIImage) -> Void = { image in attached = image; activePicker = nil }
+        let onImage: (UIImage) -> Void = { image in
+            activePicker = nil
+            Task {
+                attached = await Task.detached(priority: .userInitiated) {
+                    ImagePrep.downscale(image, maxPixel: 1400)
+                }.value
+            }
+        }
         switch source {
         case .camera: CameraPicker(onImage: onImage, onCancel: { activePicker = nil })
         case .library: LibraryPicker(onImage: onImage, onCancel: { activePicker = nil })

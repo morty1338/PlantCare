@@ -79,24 +79,13 @@ final class HistoryStore: ObservableObject {
         save()
     }
 
-    /// Move the dragged pot so it sits where the target pot is (live drag-to-reorder).
-    /// Does NOT write to disk — call `persistOrder()` once the drag ends, so we don't
-    /// hit the filesystem on every hover-swap.
-    func move(id: UUID, before target: UUID) {
-        guard id != target,
-              let from = plants.firstIndex(where: { $0.id == id }),
-              let to = plants.firstIndex(where: { $0.id == target }) else { return }
-        let moved = plants.remove(at: from)
-        let insertAt = min(to, plants.count)
-        plants.insert(moved, at: insertAt)
-    }
-
-    /// Swap two pots' positions (drag one onto another).
-    func swap(_ a: UUID, _ b: UUID) {
-        guard a != b,
-              let i = plants.firstIndex(where: { $0.id == a }),
-              let j = plants.firstIndex(where: { $0.id == b }) else { return }
-        plants.swapAt(i, j)
+    /// Live drag-to-reorder: put the pot at `newIndex`, the rest shift (like SoundMarks'
+    /// `moveStack`). In memory only — call `persistOrder()` once the drag ends.
+    func move(id: UUID, to newIndex: Int) {
+        guard let index = plants.firstIndex(where: { $0.id == id }),
+              plants.indices.contains(newIndex), index != newIndex else { return }
+        let plant = plants.remove(at: index)
+        plants.insert(plant, at: newIndex)
     }
 
     /// Persist the current order after a drag finishes.

@@ -44,6 +44,7 @@ struct ContentView: View {
             HistoryView()
                 .environmentObject(history)
                 .environmentObject(lang)
+                .presentationDragIndicator(.visible)
         }
         // My home (placement planning)
         .sheet(isPresented: $showingRooms) {
